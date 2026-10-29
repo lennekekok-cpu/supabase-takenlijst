@@ -18,7 +18,7 @@ window.addEventListener('hashchange', route);
 async function load(){
  if(!user) return;
  const current = generation;
- const {data,error}=await db.from('tasks').select('id,title,completed,created_at').order('created_at',{ascending:false});
+ const {data,error}=await db.from('tasks').select('id,title,completed,created_at,due_date').order('created_at',{ascending:false});
  if(error) throw error;
  if(current !== generation || !user) return;
  $('list').replaceChildren(); $('empty').hidden = data.length > 0;
@@ -30,12 +30,43 @@ async function load(){
   remove.textContent='Verwijder';remove.setAttribute('aria-label',`Verwijder ${task.title}`);
   check.addEventListener('change',()=>run(check,async()=>{const {data:rows,error}=await db.from('tasks').update({completed:check.checked}).eq('id',task.id).select('id');if(error){check.checked=task.completed;throw error;}if(!rows.length)throw Error('Deze taak bestaat niet meer. Vernieuw je lijst.');await load();message('Wijziging opgeslagen in de database.');}));
   remove.addEventListener('click',()=>run(remove,async()=>{const {error}=await db.from('tasks').delete().eq('id',task.id);if(error)throw error;await load();message('Taak verwijderd uit de database.');}));
-  li.append(check,title,remove);$('list').append(li);
+  
+  const details=document.createElement('div');
+  details.className='task-details';
+  const deadline=document.createElement('form');
+  deadline.className='deadline-form';
+  const label=document.createElement('label'), date=document.createElement('input'), save=document.createElement('button');
+  date.type='date'; date.id='due-'+task.id; date.value=task.due_date||'';
+  label.htmlFor=date.id; label.textContent='Deadline (optioneel)';
+  save.type='submit'; save.textContent='Opslaan';
+  const summary=document.createElement('p'); summary.className='deadline-summary';
+  if(task.due_date){
+   const [year,month,day]=task.due_date.split('-').map(Number);
+   const formatted=new Intl.DateTimeFormat('nl-NL',{day:'numeric',month:'long',year:'numeric'}).format(new Date(year,month-1,day));
+   const now=new Date();
+   const today=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+   const overdue=!task.completed && task.due_date<today;
+   summary.textContent=(overdue?'Te laat · ':'Deadline · ')+formatted;
+   if(overdue)summary.classList.add('overdue');
+  }else summary.textContent='Geen deadline';
+  deadline.append(label,date,save);
+  deadline.addEventListener('submit',event=>{
+   event.preventDefault();
+   run(save,async()=>{
+    const due_date=date.value||null;
+    const {data:rows,error}=await db.from('tasks').update({due_date}).eq('id',task.id).select('id');
+    if(error)throw error;
+    if(!rows.length)throw Error('Deze taak bestaat niet meer. Vernieuw je lijst.');
+    await load(); message(due_date?'Deadline opgeslagen.':'Deadline verwijderd.');
+   });
+  });
+  details.append(title,summary,deadline);
+  li.append(check,details,remove);$('list').append(li);
  }
 }
 $('switch').onclick=()=>{registering=!registering;$('auth-title').textContent=registering?'Maak je eigen account':'Log in en ga aan de slag';$('submit-auth').textContent=registering?'Account aanmaken':'Inloggen';$('switch').textContent=registering?'Al een account? Inloggen':'Nog geen account? Registreren';$('password').autocomplete=registering?'new-password':'current-password';message('');};
 $('auth-form').onsubmit=e=>{e.preventDefault();run($('submit-auth'),async()=>{const credentials={email:$('email').value.trim(),password:$('password').value};const {data,error}=registering?await db.auth.signUp(credentials):await db.auth.signInWithPassword(credentials);if(error)throw error;$('password').value='';message(registering&&!data.session?'Controleer je e-mail en bevestig je account. Keer daarna hier terug om in te loggen.':'Je bent ingelogd.');});};
-$('add-form').onsubmit=e=>{e.preventDefault();run(e.submitter,async()=>{if(!user)throw Error('Log eerst in.');const title=$('title').value.trim();if(!title)throw Error('Vul een taak in.');const {error}=await db.from('tasks').insert({title,user_id:user.id});if(error)throw error;$('title').value='';await load();message('Je taak staat nu in Supabase. Vernieuw de pagina: hij blijft bewaard.');});};
+$('add-form').onsubmit=e=>{e.preventDefault();run(e.submitter,async()=>{if(!user)throw Error('Log eerst in.');const title=$('title').value.trim();if(!title)throw Error('Vul een taak in.');const {error}=await db.from('tasks').insert({title,user_id:user.id,due_date:$('due-date').value||null});if(error)throw error;$('title').value='';$('due-date').value='';await load();message('Je taak staat nu in Supabase. Vernieuw de pagina: hij blijft bewaard.');});};
 $('refresh').onclick=()=>run($('refresh'),async()=>{await load();message('Taken opnieuw opgehaald uit de database.');});
 $('logout').onclick=()=>run($('logout'),async()=>{const {error}=await db.auth.signOut();if(error)throw error;message('Je bent uitgelogd.');});
 // Geen databasewerk binnen de auth-callback: dat voorkomt geblokkeerde sessie-updates.
