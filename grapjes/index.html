@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f8f2e7">
+<meta name="description" content="Een kleine pauze, een willekeurig grapje. Rechtstreeks uit onze verzameling van 50 grapjes.">
+<title>Even lachen — een grapje voor jou</title>
+<style>
+:root{color-scheme:light;font-family:system-ui,-apple-system,sans-serif;background:#f8f2e7;color:#29251e}
+*{box-sizing:border-box}body{margin:0;min-height:100svh;display:flex;flex-direction:column}
+header,footer{width:min(1080px,100%);margin:auto;padding:28px 32px;display:flex;justify-content:space-between;align-items:center;gap:20px}
+.brand{font-weight:800;font-size:19px;letter-spacing:-.7px}.dot{display:inline-block;width:11px;height:11px;background:#e67841;border-radius:50%;margin-right:8px}
+.edition{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#786c5c}
+main{width:min(850px,100%);margin:auto;padding:32px 24px 54px;text-align:center}
+.eyebrow{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8a5b3e;font-weight:700}
+h1{font-family:Georgia,serif;font-weight:400;font-size:clamp(40px,7vw,68px);letter-spacing:-2px;line-height:1.1;margin:16px 0}
+.intro{color:#776d60;font-size:15px;line-height:1.7;margin:0 0 36px}
+.card{position:relative;text-align:left;background:#fffdf8;border:1px solid #e5dccd;border-radius:24px;padding:clamp(25px,5vw,48px);box-shadow:0 16px 0 -8px #ece2d1,0 32px 50px -38px #6d4e27;min-height:290px}
+.card-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:30px}
+.tag{font-size:10px;font-weight:750;letter-spacing:1.7px;color:#9a643c;text-transform:uppercase}
+.smile{width:44px;height:44px;border-radius:50%;background:#f9d47e;position:relative;transform:rotate(9deg);flex-shrink:0}
+.smile:before{content:"";position:absolute;left:13px;top:12px;width:4px;height:5px;border-radius:50%;background:#604719;box-shadow:14px 0 #604719}
+.smile:after{content:"";position:absolute;left:12px;top:20px;width:21px;height:12px;border:2px solid #604719;border-top:0;border-radius:0 0 20px 20px}
+#vraag{font-size:clamp(22px,4vw,32px);font-weight:600;line-height:1.4;letter-spacing:-.6px;margin:0}
+#antwoord{font-family:Georgia,serif;font-size:clamp(22px,4vw,30px);color:#ad512b;line-height:1.5;margin:22px 0 0}
+#status{font-size:14px;color:#776d60;line-height:1.6;margin:0}
+button{font:inherit;background:#b6502c;color:white;border:0;border-radius:999px;padding:16px 27px;font-weight:650;margin-top:30px;cursor:pointer;transition:background .2s,transform .2s}
+button:hover{background:#963c1d;transform:translateY(-2px)}button:disabled{opacity:.6;cursor:wait;transform:none}
+button:focus-visible,a:focus-visible{outline:3px solid #92672d;outline-offset:5px}
+.note{font-size:12px;color:#817669;margin-top:18px}
+footer{border-top:1px solid #e2d8c8;font-size:11px;color:#817669}footer a{color:inherit;text-underline-offset:3px}
+[hidden]{display:none!important}@media(max-width:500px){header,footer{padding:22px}.edition{font-size:9px;letter-spacing:1px}main{padding-top:18px}.card{min-height:300px}footer{align-items:flex-start;flex-direction:column;gap:8px}}
+@media(prefers-reduced-motion:reduce){button{transition:none}}
+</style>
+</head>
+<body>
+<header><div class="brand"><span class="dot"></span>even lachen.</div><span class="edition">Een kleine pauze</span></header>
+<main>
+<p class="eyebrow">50 grapjes · één glimlach tegelijk</p>
+<h1>Vandaag al gelachen?</h1>
+<p class="intro">Neem een momentje. Dit grapje is voor jou.</p>
+<section class="card" id="card" aria-label="Willekeurig grapje" aria-busy="true">
+<div class="card-top"><span class="tag" id="nummer">Een verrassing voor jou</span><span class="smile" aria-hidden="true"></span></div>
+<div aria-live="polite" aria-atomic="true"><p id="status" role="status">We halen een grapje voor je op…</p><h2 id="vraag" hidden></h2><p id="antwoord" hidden></p></div>
+</section>
+<button type="button" id="opnieuw" disabled>Nog een grapje ↗</button>
+<p class="note">Elke keer opnieuw opgehaald uit Supabase.</p>
+</main>
+<footer><span>Een beetje flauw mag best.</span><a href="../">Naar je takenlijst ↗</a></footer>
+<script>
+const endpoint='https://hxnzeujekbizdcrqrtpe.supabase.co/rest/v1/rpc/grapjes_willekeurig';
+const publishableKey='sb_publishable_WBr_gPIvs6cF6ob4H709Dg_SKRrr6RQ';
+const el=id=>document.getElementById(id);
+let loading=false;
+async function haalGrapje(){
+ if(loading)return;
+ loading=true;el('opnieuw').disabled=true;el('card').setAttribute('aria-busy','true');
+ el('status').hidden=false;el('status').textContent='We halen een grapje voor je op…';
+ el('vraag').hidden=true;el('antwoord').hidden=true;el('nummer').textContent='Een verrassing voor jou';
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),12000);
+ try{
+  const response=await fetch(endpoint,{
+   method:'POST',headers:{apikey:publishableKey,'Content-Type':'application/json'},
+   body:'{}',cache:'no-store',signal:controller.signal
+  });
+  if(!response.ok)throw new Error('Supabase gaf geen geldig antwoord.');
+  const rows=await response.json();
+  const joke=Array.isArray(rows)?rows[0]:null;
+  if(!joke||typeof joke.vraag!=='string'||typeof joke.antwoord!=='string')throw new Error('Er is geen grapje gevonden.');
+  el('nummer').textContent='Grapje nr. '+joke.id;
+  el('vraag').textContent=joke.vraag;el('antwoord').textContent=joke.antwoord;
+  el('vraag').hidden=false;el('antwoord').hidden=false;el('status').hidden=true;
+  el('opnieuw').textContent='Nog een grapje ↗';
+ }catch(error){
+  el('status').textContent='Het grapje kon niet worden opgehaald. Controleer je internetverbinding en probeer het opnieuw.';
+  el('opnieuw').textContent='Probeer opnieuw ↗';
+ }finally{
+  clearTimeout(timer);loading=false;el('opnieuw').disabled=false;el('card').setAttribute('aria-busy','false');
+ }
+}
+el('opnieuw').addEventListener('click',haalGrapje);
+// pageshow wordt ook uitgevoerd wanneer de browser de pagina uit zijn terugknop-cache herstelt.
+window.addEventListener('pageshow',haalGrapje);
+</script>
+</body></html>
